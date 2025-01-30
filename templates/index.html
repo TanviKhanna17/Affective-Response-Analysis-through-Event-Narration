@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Storytelling</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+        }
+        .question {
+            margin-bottom: 20px;
+        }
+        .options {
+            margin-left: 20px;
+        }
+        .option-button {
+            margin: 5px;
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+        }
+        .option-button.selected {
+            background-color: green;
+            color: white;
+        }
+        #error-message {
+            color: red;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Interactive Storytelling</h1>
+
+    <div id="story-section">
+        <h2>Story Part <span id="story-part">1</span></h2>
+        <p id="story-content">
+            <!-- First part of the story -->
+            Aria, a young adventurer, finds an old map hidden in her attic.
+        </p>
+    </div>
+
+    <div id="input-section">
+        <label for="thoughts">Your thoughts about this part:</label><br>
+        <textarea id="thoughts" rows="4" cols="50"></textarea><br>
+        <span id="error-message">Please enter your thoughts!</span><br>
+        <button onclick="submitThoughts()">Submit Thoughts</button>
+    </div>
+
+    <div id="questions-section" style="display: none;">
+        <h2>Generated Questions:</h2>
+        <div id="questions-container"></div>
+        <button onclick="nextPart()">Next Part</button>
+    </div>
+
+    <script>
+        const storyParts = [
+            "Aria, a young adventurer, finds an old map hidden in her attic.",
+            "She decides to follow the map, which leads her to a mysterious forest.",
+            "Inside the forest, she hears strange whispers but cannot see anyone.",
+            "She stumbles upon an abandoned hut with a locked chest inside.",
+            "The map reveals a riddle that seems to unlock the chest.",
+            "Solving the riddle, Aria opens the chest to find a glowing gemstone.",
+            "Suddenly, the ground trembles, and a hidden passageway opens.",
+            "The passageway leads to a grand underground chamber filled with ancient artifacts.",
+            "A guardian spirit appears, asking Aria to choose between keeping the gemstone or restoring the artifacts to their rightful place.",
+            "Aria makes her choice, changing her destiny forever."
+        ];
+
+        let currentPart = 0;
+
+        function submitThoughts() {
+            const thoughtsInput = document.getElementById("thoughts");
+            const errorMessage = document.getElementById("error-message");
+            const thoughts = thoughtsInput.value.trim();
+
+            if (thoughts === "") {
+                // Show the error message if input is empty
+                errorMessage.style.display = "block";
+                return; // Prevent further execution
+            }
+
+            // Hide the error message when valid input is provided
+            errorMessage.style.display = "none";
+
+            // Send the data to the backend
+            fetch('/generate_questions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    event: storyParts[currentPart],
+                    thoughts: thoughts
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const questionsContainer = document.getElementById("questions-container");
+                questionsContainer.innerHTML = ""; // Clear previous questions
+
+                if (data.questions && data.questions.length > 0) {
+                    data.questions.forEach((item, index) => {
+                        const questionDiv = document.createElement("div");
+                        questionDiv.className = "question";
+                        questionDiv.innerHTML = `
+                            <p><strong>Q${index + 1}:</strong> ${item.question}</p>
+                            <div class="options">
+                                <button class="option-button" onclick="selectOption(this)">${item.options.A}</button>
+                                <button class="option-button" onclick="selectOption(this)">${item.options.B}</button>
+                                <button class="option-button" onclick="selectOption(this)">${item.options.C}</button>
+                            </div>
+                        `;
+                        questionsContainer.appendChild(questionDiv);
+                    });
+
+                    document.getElementById("questions-section").style.display = "block";
+                    document.getElementById("input-section").style.display = "none";
+                } else {
+                    alert("No relevant questions generated.");
+                }
+            })
+            .catch(error => {
+                console.error("Error generating questions:", error);
+                alert("An error occurred while generating questions.");
+            });
+        }
+
+        function selectOption(button) {
+            // Remove the 'selected' class from all buttons
+            const buttons = button.parentNode.getElementsByClassName('option-button');
+            for (let i = 0; i < buttons.length; i++) {
+                buttons[i].classList.remove('selected');
+            }
+
+            // Add 'selected' class to the clicked button
+            button.classList.add('selected');
+        }
+
+        function nextPart() {
+            currentPart++;
+            if (currentPart < storyParts.length) {
+                document.getElementById("story-content").innerText = storyParts[currentPart];
+                document.getElementById("story-part").innerText = currentPart + 1;
+
+                document.getElementById("thoughts").value = "";
+                document.getElementById("input-section").style.display = "block";
+                document.getElementById("questions-section").style.display = "none";
+            } else {
+                alert("The story has concluded. Thank you for your input!");
+            }
+        }
+    </script>
+</body>
+</html>
